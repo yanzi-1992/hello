@@ -4,7 +4,7 @@ import time
 from selenium import webdriver
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-# 导入所有异常类的包
+# 导入所有异常的包
 from selenium.common.exceptions import *
 import os
 from selenium.webdriver.support.select import Select
@@ -12,7 +12,6 @@ from selenium.webdriver.support.select import Select
 from selenium.webdriver.common.by import By
 # 鼠标事件包
 from selenium.webdriver.common.action_chains import ActionChains
-
 
 # 底层公共类
 # 底层基类封装# 基于原生selenium框架做了二次封装
@@ -51,9 +50,9 @@ class BasePage(object):
             result=WebDriverWait(self.driver,self.timeout).until(EC.text_to_be_present_in_element(locator,text))
             # print "成功"
             return result
-        except Exception as m:
-            print ("异常提示：%s" %str(m))
-            return False
+        # except Exception as m:
+        #     print ("异常提示：%s"%str(m))
+        #     return False
         except:
             # print "失败"
             return False
