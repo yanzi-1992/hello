@@ -1,397 +1,11 @@
-#-*- coding: utf-8 -*-
-"""
-A TestRunner for use with the Python unit testing framework. It
-generates a HTML report to show the result at a glance.
-
-The simplest way to use this is to invoke its main method. E.g.
-
-    import unittest
-    import HTMLTestRunner
-
-    ... define your tests ...
-
-    if __name__ == '__main__':
-        HTMLTestRunner.main()
-
-
-For more customization options, instantiates a HTMLTestRunner object.
-HTMLTestRunner is a counterpart to unittest's TextTestRunner. E.g.
-
-    # output to a file
-    fp = file('my_report.html', 'wb')
-    runner = HTMLTestRunner.HTMLTestRunner(
-                stream=fp,
-                title='My unit test',
-                description='This demonstrates the report output by HTMLTestRunner.'
-                )
-
-    # Use an external stylesheet.
-    # See the Template_mixin class for more customizable options
-    runner.STYLESHEET_TMPL = '<link rel="stylesheet" href="my_stylesheet.css" type="text/css">'
-
-    # run the test
-    runner.run(my_test_suite)
-
-
-------------------------------------------------------------------------
-Copyright (c) 2004-2007, Wai Yip Tung
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are
-met:
-
-* Redistributions of source code must retain the above copyright notice,
-  this list of conditions and the following disclaimer.
-* Redistributions in binary form must reproduce the above copyright
-  notice, this list of conditions and the following disclaimer in the
-  documentation and/or other materials provided with the distribution.
-* Neither the name Wai Yip Tung nor the names of its contributors may be
-  used to endorse or promote products derived from this software without
-  specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
-IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
-TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
-PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
-OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-"""
-
-# URL: http://tungwaiyip.info/software/HTMLTestRunner.html
-
-__author__ = "Wai Yip Tung"
-__version__ = "0.8.3"
-
-
-"""
-Change History
-Version 0.8.4 by GoverSky
-* Add sopport for 3.x
-* Add piechart for resultpiechart
-* Add Screenshot for selenium_case test
-* Add Retry on failed
-
-Version 0.8.3
-* Prevent crash on class or module-level exceptions (Darren Wurf).
-
-Version 0.8.2
-* Show output inline instead of popup window (Viorel Lupu).
-
-Version in 0.8.1
-* Validated XHTML (Wolfgang Borgert).
-* Added description of test classes and test cases.
-
-Version in 0.8.0
-* Define Template_mixin class for customization.
-* Workaround a IE 6 bug that it does not treat <script> block as CDATA.
-
-Version in 0.7.1
-* Back port to Python 2.3 (Frank Horowitz).
-* Fix missing scroll bars in detail log (Podi).
-"""
-
-# TODO: color stderr
-# TODO: simplify javascript using ,ore than 1 class in the class attribute?
-import datetime
-
-import sys
-import unittest
-from xml.sax import saxutils
-
-PY3K = (sys.version_info[0] > 2)
-if PY3K:
-    import io as StringIO
-else:
-    import StringIO
-import copy
-
-# ------------------------------------------------------------------------
-# The redirectors below are used to capture output during testing. Output
-# sent to sys.stdout and sys.stderr are automatically captured. However
-# in some cases sys.stdout is already cached before HTMLTestRunner is
-# invoked (e.g. calling logging_demo.basicConfig). In order to capture those
-# output, use the redirectors for the cached stream.
-#
-# e.g.
-#   >>> logging_demo.basicConfig(stream=HTMLTestRunner.stdout_redirector)
-#   >>>
-
-class OutputRedirector(object):
-    """ Wrapper to redirect stdout or stderr """
-
-    def __init__(self, fp):
-        self.fp = fp
-
-    def write(self, s):
-        self.fp.write(s)
-
-    def writelines(self, lines):
-        self.fp.writelines(lines)
-
-    def flush(self):
-        self.fp.flush()
-
-
-stdout_redirector = OutputRedirector(sys.stdout)
-stderr_redirector = OutputRedirector(sys.stderr)
-
-
-# ----------------------------------------------------------------------
-# Template
-
-class Template_mixin(object):
-    """
-    Define a HTML template for report customerization and generation.
-
-    Overall structure of an HTML report
-
-    HTML
-    +------------------------+
-    |<html>                  |
-    |  <head>                |
-    |                        |
-    |   STYLESHEET           |
-    |   +----------------+   |
-    |   |                |   |
-    |   +----------------+   |
-    |                        |
-    |  </head>               |
-    |                        |
-    |  <body>                |
-    |                        |
-    |   HEADING              |
-    |   +----------------+   |
-    |   |                |   |
-    |   +----------------+   |
-    |                        |
-    |   REPORT               |
-    |   +----------------+   |
-    |   |                |   |
-    |   +----------------+   |
-    |                        |
-    |   ENDING               |
-    |   +----------------+   |
-    |   |                |   |
-    |   +----------------+   |
-    |                        |
-    |  </body>               |
-    |</html>                 |
-    +------------------------+
-    """
-
-    STATUS = {
-        0: u'通过',
-        1: u'失败',
-        2: u'错误',
-    }
-
-    DEFAULT_TITLE = 'Unit Test Report'
-    DEFAULT_DESCRIPTION = ''
-
-    # ------------------------------------------------------------------------
-    # HTML Template
-
-    HTML_TMPL = r"""<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-    <title>%(title)s</title>
-    <meta name="generator" content="%(generator)s"/>
+    <title>这个是我的自动化报告</title>
+    <meta name="generator" content="HTMLTestRunner 0.8.3"/>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-    %(stylesheet)s
-</head>
-<body>
-<script language="javascript" type="text/javascript">
-output_list = Array();
-
-/* level - 0:Summary; 1:Failed; 2:All */
-function showCase(level) {
-    trs = document.getElementsByTagName("tr");
-    for (var i = 0; i < trs.length; i++) {
-        tr = trs[i];
-        id = tr.id;
-        if (id.substr(0,2) == 'ft') {
-            if (level < 1) {
-                tr.className = 'hiddenRow';
-            }
-            else {
-                tr.className = '';
-            }
-        }
-        if (id.substr(0,2) == 'pt') {
-            if (level > 1) {
-                tr.className = '';
-            }
-            else {
-                tr.className = 'hiddenRow';
-            }
-        }
-    }
-}
-
-
-function showClassDetail(cid, count) {
-    var id_list = Array(count);
-    var toHide = 1;
-    for (var i = 0; i < count; i++) {
-        tid0 = 't' + cid.substr(1) + '.' + (i+1);
-        tid = 'f' + tid0;
-        tr = document.getElementById(tid);
-        if (!tr) {
-            tid = 'p' + tid0;
-            tr = document.getElementById(tid);
-        }
-        id_list[i] = tid;
-        if (tr.className) {
-            toHide = 0;
-        }
-    }
-    for (var i = 0; i < count; i++) {
-        tid = id_list[i];
-        if (toHide) {
-            document.getElementById(tid).className = 'hiddenRow';
-        }
-        else {
-            document.getElementById(tid).className = '';
-        }
-    }
-}
-
-
-function showTestDetail(div_id){
-    var details_div = document.getElementById(div_id)
-    var displayState = details_div.style.display
-    // alert(displayState)
-    if (displayState != 'block' ) {
-        displayState = 'block'
-        details_div.style.display = 'block'
-    }
-    else {
-        details_div.style.display = 'none'
-    }
-}
-
-
-function html_escape(s) {
-    s = s.replace(/&/g,'&amp;');
-    s = s.replace(/</g,'&lt;');
-    s = s.replace(/>/g,'&gt;');
-    return s;
-}
-
-function drawCircle(pass, fail, error){ 
-    var color = ["#6c6","#c60","#c00"];  
-    var data = [pass,fail,error]; 
-    var text_arr = ["pass", "fail", "error"];
-
-    var canvas = document.getElementById("circle");  
-    var ctx = canvas.getContext("2d");  
-    var startPoint=0;
-    var width = 20, height = 10;
-    var posX = 112 * 2 + 20, posY = 30;
-    var textX = posX + width + 5, textY = posY + 10;
-    for(var i=0;i<data.length;i++){  
-        ctx.fillStyle = color[i];  
-        ctx.beginPath();  
-        ctx.moveTo(112,84);   
-        ctx.arc(112,84,84,startPoint,startPoint+Math.PI*2*(data[i]/(data[0]+data[1]+data[2])),false);  
-        ctx.fill();  
-        startPoint += Math.PI*2*(data[i]/(data[0]+data[1]+data[2]));  
-        ctx.fillStyle = color[i];  
-        ctx.fillRect(posX, posY + 20 * i, width, height);  
-        ctx.moveTo(posX, posY + 20 * i);  
-        ctx.font = 'bold 14px';
-        ctx.fillStyle = color[i];
-        var percent = text_arr[i] + ":"+data[i];  
-        ctx.fillText(percent, textX, textY + 20 * i);  
-
-    }
-}
-
-
-function show_img(obj) {
-    var obj1 = obj.nextElementSibling
-    obj1.style.display='block'
-    var index = 0;//每张图片的下标，
-    var len = obj1.getElementsByTagName('img').length;
-    var imgyuan = obj1.getElementsByClassName('imgyuan')[0]
-    //var start=setInterval(autoPlay,500);
-    obj1.onmouseover=function(){//当鼠标光标停在图片上，则停止轮播
-        clearInterval(start);
-    }
-    obj1.onmouseout=function(){//当鼠标光标停在图片上，则开始轮播
-        start=setInterval(autoPlay,1000);
-    }    
-    for (var i = 0; i < len; i++) {
-        var font = document.createElement('font')
-        imgyuan.appendChild(font)
-    }
-    var lis = obj1.getElementsByTagName('font');//得到所有圆圈
-    changeImg(0)
-    var funny = function (i) {
-        lis[i].onmouseover = function () {
-            index=i
-            changeImg(i)
-        }
-    }
-    for (var i = 0; i < lis.length; i++) {
-        funny(i);
-    }
     
-    function autoPlay(){
-        if(index>len-1){
-            index=0;
-            clearInterval(start); //运行一轮后停止
-        }
-        changeImg(index++);
-    }
-    imgyuan.style.width= 25*len +"px";
-    //对应圆圈和图片同步
-    function changeImg(index) {
-        var list = obj1.getElementsByTagName('img');
-        var list1 = obj1.getElementsByTagName('font');
-        for (i = 0; i < list.length; i++) {
-            list[i].style.display = 'none';
-            list1[i].style.backgroundColor = 'white';
-        }
-        list[index].style.display = 'block';
-        list1[index].style.backgroundColor = 'blue';
-    }
-
-}
-function hide_img(obj){
-    obj.parentElement.style.display = "none";
-    obj.parentElement.getElementsByClassName('imgyuan')[0].innerHTML = "";
-}
-</script>
-<div class="piechart">
-    <div>
-        <canvas id="circle" width="350" height="168" </canvas>
-    </div>
-</div>
-%(heading)s
-%(report)s
-%(ending)s
-
-</body>
-</html>
-"""
-    # variables: (title, generator, stylesheet, heading, report, ending)
-
-
-    # ------------------------------------------------------------------------
-    # Stylesheet
-    #
-    # alternatively use a <link> for external style sheet, e.g.
-    #   <link rel="stylesheet" href="$url" type="text/css">
-
-    STYLESHEET_TMPL = """
 <style type="text/css" media="screen">
 body        { font-family: verdana, arial, helvetica, sans-serif; font-size: 80%; }
 table       { font-size: 100%; }
@@ -575,28 +189,188 @@ tr[id^=et]  td { background-color: rgba(249,62,62,.3) !important ; }
 
 
 </style>
-"""
 
-    # ------------------------------------------------------------------------
-    # Heading
-    #
+</head>
+<body>
+<script language="javascript" type="text/javascript">
+output_list = Array();
 
-    HEADING_TMPL = """<div class='heading'>
-<h1>%(title)s</h1>
-%(parameters)s
-<p class='description'>%(description)s</p>
+/* level - 0:Summary; 1:Failed; 2:All */
+function showCase(level) {
+    trs = document.getElementsByTagName("tr");
+    for (var i = 0; i < trs.length; i++) {
+        tr = trs[i];
+        id = tr.id;
+        if (id.substr(0,2) == 'ft') {
+            if (level < 1) {
+                tr.className = 'hiddenRow';
+            }
+            else {
+                tr.className = '';
+            }
+        }
+        if (id.substr(0,2) == 'pt') {
+            if (level > 1) {
+                tr.className = '';
+            }
+            else {
+                tr.className = 'hiddenRow';
+            }
+        }
+    }
+}
+
+
+function showClassDetail(cid, count) {
+    var id_list = Array(count);
+    var toHide = 1;
+    for (var i = 0; i < count; i++) {
+        tid0 = 't' + cid.substr(1) + '.' + (i+1);
+        tid = 'f' + tid0;
+        tr = document.getElementById(tid);
+        if (!tr) {
+            tid = 'p' + tid0;
+            tr = document.getElementById(tid);
+        }
+        id_list[i] = tid;
+        if (tr.className) {
+            toHide = 0;
+        }
+    }
+    for (var i = 0; i < count; i++) {
+        tid = id_list[i];
+        if (toHide) {
+            document.getElementById(tid).className = 'hiddenRow';
+        }
+        else {
+            document.getElementById(tid).className = '';
+        }
+    }
+}
+
+
+function showTestDetail(div_id){
+    var details_div = document.getElementById(div_id)
+    var displayState = details_div.style.display
+    // alert(displayState)
+    if (displayState != 'block' ) {
+        displayState = 'block'
+        details_div.style.display = 'block'
+    }
+    else {
+        details_div.style.display = 'none'
+    }
+}
+
+
+function html_escape(s) {
+    s = s.replace(/&/g,'&amp;');
+    s = s.replace(/</g,'&lt;');
+    s = s.replace(/>/g,'&gt;');
+    return s;
+}
+
+function drawCircle(pass, fail, error){ 
+    var color = ["#6c6","#c60","#c00"];  
+    var data = [pass,fail,error]; 
+    var text_arr = ["pass", "fail", "error"];
+
+    var canvas = document.getElementById("circle");  
+    var ctx = canvas.getContext("2d");  
+    var startPoint=0;
+    var width = 20, height = 10;
+    var posX = 112 * 2 + 20, posY = 30;
+    var textX = posX + width + 5, textY = posY + 10;
+    for(var i=0;i<data.length;i++){  
+        ctx.fillStyle = color[i];  
+        ctx.beginPath();  
+        ctx.moveTo(112,84);   
+        ctx.arc(112,84,84,startPoint,startPoint+Math.PI*2*(data[i]/(data[0]+data[1]+data[2])),false);  
+        ctx.fill();  
+        startPoint += Math.PI*2*(data[i]/(data[0]+data[1]+data[2]));  
+        ctx.fillStyle = color[i];  
+        ctx.fillRect(posX, posY + 20 * i, width, height);  
+        ctx.moveTo(posX, posY + 20 * i);  
+        ctx.font = 'bold 14px';
+        ctx.fillStyle = color[i];
+        var percent = text_arr[i] + ":"+data[i];  
+        ctx.fillText(percent, textX, textY + 20 * i);  
+
+    }
+}
+
+
+function show_img(obj) {
+    var obj1 = obj.nextElementSibling
+    obj1.style.display='block'
+    var index = 0;//每张图片的下标，
+    var len = obj1.getElementsByTagName('img').length;
+    var imgyuan = obj1.getElementsByClassName('imgyuan')[0]
+    //var start=setInterval(autoPlay,500);
+    obj1.onmouseover=function(){//当鼠标光标停在图片上，则停止轮播
+        clearInterval(start);
+    }
+    obj1.onmouseout=function(){//当鼠标光标停在图片上，则开始轮播
+        start=setInterval(autoPlay,1000);
+    }    
+    for (var i = 0; i < len; i++) {
+        var font = document.createElement('font')
+        imgyuan.appendChild(font)
+    }
+    var lis = obj1.getElementsByTagName('font');//得到所有圆圈
+    changeImg(0)
+    var funny = function (i) {
+        lis[i].onmouseover = function () {
+            index=i
+            changeImg(i)
+        }
+    }
+    for (var i = 0; i < lis.length; i++) {
+        funny(i);
+    }
+    
+    function autoPlay(){
+        if(index>len-1){
+            index=0;
+            clearInterval(start); //运行一轮后停止
+        }
+        changeImg(index++);
+    }
+    imgyuan.style.width= 25*len +"px";
+    //对应圆圈和图片同步
+    function changeImg(index) {
+        var list = obj1.getElementsByTagName('img');
+        var list1 = obj1.getElementsByTagName('font');
+        for (i = 0; i < list.length; i++) {
+            list[i].style.display = 'none';
+            list1[i].style.backgroundColor = 'white';
+        }
+        list[index].style.display = 'block';
+        list1[index].style.backgroundColor = 'blue';
+    }
+
+}
+function hide_img(obj){
+    obj.parentElement.style.display = "none";
+    obj.parentElement.getElementsByClassName('imgyuan')[0].innerHTML = "";
+}
+</script>
+<div class="piechart">
+    <div>
+        <canvas id="circle" width="350" height="168" </canvas>
+    </div>
+</div>
+<div class='heading'>
+<h1>这个是我的自动化报告</h1>
+<p class='attribute'><strong>开始时间:</strong> 2020-11-01 17:00:16</p>
+<p class='attribute'><strong>耗时:</strong> 0:00:41.776000</p>
+<p class='attribute'><strong>状态:</strong> <span class="tj passCase">Pass</span>4 <span class="tj failCase">Failure</span>1</p>
+
+<p class='description'>这个是项目的用例执行情况：</p>
 </div>
 
-"""  # variables: (title, parameters, description)
 
-    HEADING_ATTRIBUTE_TMPL = """<p class='attribute'><strong>%(name)s:</strong> %(value)s</p>
-"""  # variables: (name, value)
 
-    # ------------------------------------------------------------------------
-    # Report
-    #
-
-    REPORT_TMPL = """
 <p id='show_detail_line'>显示
 <a href='javascript:showCase(0)'>概要</a>
 <a href='javascript:showCase(1)'>失败</a>
@@ -622,501 +396,203 @@ tr[id^=et]  td { background-color: rgba(249,62,62,.3) !important ; }
     <th>视图</th>
     <th>错误截图</th>
 </tr>
-%(test_list)s
+
+<tr class='failClass'>
+    <td>blog.test_01.Test1: 百度用例</td>
+    <td>2</td>
+    <td>1</td>
+    <td>1</td>
+    <td>0</td>
+    <td><a href="javascript:showClassDetail('c1',2)">详情</a></td>
+    <td>&nbsp;</td>
+</tr>
+
+<tr id='pt1.1' class='hiddenRow'>
+    <td ><div class='testcase'>test_01: 百度首页标题用例</div></td>
+    <td colspan='5' align='center'>
+
+    <!--css div popup start-->
+    <span class='status passCase'>
+    <a class="popup_link" onfocus='this.blur();' href="javascript:showTestDetail('div_pt1.1')" >
+        通过</a></span>
+
+    <div id='div_pt1.1' class="popup_window">
+        <div style='text-align: right; color:red;cursor:pointer'>
+        <a onfocus='this.blur();' onclick="document.getElementById('div_pt1.1').style.display = 'none' " >
+           [x]</a>
+        </div>
+        <pre>
+        
+pt1.1: 首页标题百度一下，你就知道
+
+
+        </pre>
+    </div>
+    <!--css div popup end-->
+
+    </td>
+    <td>无截图</td>
+</tr>
+
+<tr id='ft1.2' class='none'>
+    <td ><div class='testcase'>test_02: 百度输入框</div></td>
+    <td colspan='5' align='center'>
+
+    <!--css div popup start-->
+    <span class='status failCase'>
+    <a class="popup_link" onfocus='this.blur();' href="javascript:showTestDetail('div_ft1.2')" >
+        失败</a></span>
+
+    <div id='div_ft1.2' class="popup_window">
+        <div style='text-align: right; color:red;cursor:pointer'>
+        <a onfocus='this.blur();' onclick="document.getElementById('div_ft1.2').style.display = 'none' " >
+           [x]</a>
+        </div>
+        <pre>
+        
+ft1.2: 百度一下，你就知道
+Traceback (most recent call last):
+  File "E:\test_xiangmu\case\blog\test_01.py", line 25, in test_02
+    self.assertEqual(b,p)
+AssertionError: u'\u767e\u5ea6\u4e00\u4e0b\uff0c\u4f60\u5c31\u77e5\u9053' != u'123'
+- 百度一下，你就知道
++ 123
+
+
+
+        </pre>
+    </div>
+    <!--css div popup end-->
+
+    </td>
+    <td>
+        <a href="#"  onclick="show_img(this)">显示截图</a>
+    <div align="center" class="screenshots"  style="display:none">
+        <a class="close_shots"  href="#"   onclick="hide_img(this)"></a>
+         <img src="data:image/jpg;base64,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Q8Y2Zl9CFAAAIC2BBAAAAJCcQAIAAABITiABAAAAJCeQAAAAAJITSAAAAADJCSQAAACA5AQSAAAAQHICCQAAACA5gQQAAACQnEACAAAASE4gAQAAACQnkAAAAACSE0gAAAAAyQkkAAAAgOQEEgAAAEByAgkAAAAgOYEEAAAAkJxAAgAAAEhOIAEAAAAkJ5AAAAAAkhNIAAAAAMkJJAAAAIDkBBIAAABAcgIJAAAAIDmBBAAAAJCcQAIAAABITiABAAAAJCeQAAAAAJITSAAAAADJCSQAAACA5AQSAAAAQHICCQAAACA5gQQAAACQnEACAAAASE4gAQAAACQnkAAAAACSE0gAAAAAyQkkAAAAgOQEEgAAAEByAgkAAAAgOYEEAAAAkJxAAgAAAEhOIAEAAAAkJ5AAAAAAkhNIAAAAAMkJJAAAAIDkBBIAAABAcgIJAAAAIDmBBAAAAJCcQAIAAABITiABAAAAJCeQAAAAAJITSAAAAADJCSQAAACA5AQSAAAAQHICCQAAACA5gQQAAACQnEACAAAASE4gAQAAACQnkAAAAACSE0gAAAAAyQkkAAAAgOQEEgAAAEByAgkAAAAgOYEEAAAAkJxAAgAAAEhOIAEAAAAkJ5AAAAAAkhNIAAAAAMkJJAAAAIDkBBIAAABAcgIJAAAAIDmBBAAAAJCcQAIAAABITiABAAAAJCeQAAAAAJITSAAAAADJCSQAAACA5AQSAAAAQHICCQAAACA5gQQAAACQnEACAAAASE4gAQAAACQnkAAAAACSE0gAAAAAyQkkAAAAgOQEEgAAAEByAgkAAAAgOYEEAAAAkJxAAgAAAEhOIAEAAAAkJ5AAAAAAkhNIAAAAAMkJJAAAAIDkBBIAAABAcgIJAAAAIDmBBAAAAJCcQAIAAABITiABAAAAJCeQAAAAAJITSAAAAADJCSQAAACA5AQSAAAAQHICCQAAACA5gQQAAACQnEACAAAASE4gAQAAACQnkAAAAACSE0gAAAAAyQkkAAAAgOQEEgAAAEByAgkAAAAgOYEEAAAAkJxAAgAAAEhOIAEAAAAkJ5AAAAAAkhNIAAAAAMkJJAAAAIDkBBIAAABAcgIJAAAAIDmBBAAAAJCcQAIAAABITiABAAAAJCeQAAAAAJITSAAAAADJCSQAAACA5AQSAAAAQHICCQAAACA5gQQAAACQnEACAAAASE4gAQAAACQnkAAAAACSE0gAAAAAyQkkAAAAgOQEEgAAAEByAgkAAAAgOYEEAAAAkJxAAgAAAEhOIAEAAAAkJ5AAAAAAkhNIAAAAAMkJJAAAAIDkBBIAAABAcgIJAAAAIDmBBAAAAJCcQAIAAABITiABAAAAJCeQAAAAAJITSAAAAADJCSQAAACA5AQSAAAAQHICCQAAACA5gQQAAACQnEACAAAASE4gAQAAACQnkAAAAACSE0gAAAAAyQkkAAAAgOQEEgAAAEByAgkAAAAgOYEEAAAAkJxAAgAAAEhOIAEAAAAkJ5AAAAAAkhNIAAAAAMkJJAAAAIDkBBIAAABAcgIJAAAAIDmBBAAAAJCcQAIAAABITiABAAAAJCeQAAAAAJITSAAAAADJCSQAAACA5AQSAAAAQHICCQAAACA5gQQAAACQnEACAAAASE4gAQAAACQnkAAAAACSE0gAAAAAyQkkAAAAgOQEEgAAAEByAgkAAAAgOYEEAAAAkJxAAgAAAEhOIAEAAAAkJ5AAAAAAkhNIAAAAAMkJJAAAAIDkBBIAAABAcgIJAAAAIDmBBAAAAJCcQAIAAABITiABAAAAJCeQAAAAAJITSAAAAADJCSQAAACA5AQSAAAAQHICCQAAACA5gQQAAACQnEACAAAASE4gAQAAACQnkAAAAACSE0gAAAAAyQkkAAAAgOQEEgAAAEByAgkAAAAgOYEEAAAAkJxAAgAAAEhOIAEAAAAkJ5AAAAAAkhNIAAAAAMkJJAAAAIDkBBIAAABAcgIJAAAAIDmBBAAAAJCcQAIAAABITiABAAAAJCeQAAAAAJITSAAAAADJCSQAAACA5AQSAAAAQHICCQAAACA5gQQAAACQnEACAAAASE4gAQAAACQnkAAAAACSE0gAAAAAyQkkAAAAgOQEEgAAAEByAgkAAAAgOYEEAAAAkJxAAgAAAEhOIAEAAAAkJ5AAAAAAkhNIAAAAAMkJJAAAAIDkBBIAAABAcgIJAAAAIDmBBAAAAJCcQAIAAABITiABAAAAJCeQAAAAAJITSAAAAADJCSQAAACA5AQSAAAAQHICCQAAACA5gQQAAACQnEACAAAASE4gAQAAACQnkAAAAACSE0gAAAAAyQkkAAAAgOT+f0+AV/Sb32BeAAAAAElFTkSuQmCC" style="display: block;" class="img"/>
+
+        <div class="imgyuan"></div>
+    </div>
+    </td>
+</tr>
+
+<tr class='passClass'>
+    <td>blog.test_02.Test2</td>
+    <td>2</td>
+    <td>2</td>
+    <td>0</td>
+    <td>0</td>
+    <td><a href="javascript:showClassDetail('c2',2)">详情</a></td>
+    <td>&nbsp;</td>
+</tr>
+
+<tr id='pt2.1' class='hiddenRow'>
+    <td ><div class='testcase'>test_03</div></td>
+    <td colspan='5' align='center'>
+
+    <!--css div popup start-->
+    <span class='status passCase'>
+    <a class="popup_link" onfocus='this.blur();' href="javascript:showTestDetail('div_pt2.1')" >
+        通过</a></span>
+
+    <div id='div_pt2.1' class="popup_window">
+        <div style='text-align: right; color:red;cursor:pointer'>
+        <a onfocus='this.blur();' onclick="document.getElementById('div_pt2.1').style.display = 'none' " >
+           [x]</a>
+        </div>
+        <pre>
+        
+pt2.1: 我是03
+
+
+        </pre>
+    </div>
+    <!--css div popup end-->
+
+    </td>
+    <td>无截图</td>
+</tr>
+
+<tr id='pt2.2' class='hiddenRow'>
+    <td ><div class='testcase'>test_04: 测试用例04</div></td>
+    <td colspan='5' align='center'>
+
+    <!--css div popup start-->
+    <span class='status passCase'>
+    <a class="popup_link" onfocus='this.blur();' href="javascript:showTestDetail('div_pt2.2')" >
+        通过</a></span>
+
+    <div id='div_pt2.2' class="popup_window">
+        <div style='text-align: right; color:red;cursor:pointer'>
+        <a onfocus='this.blur();' onclick="document.getElementById('div_pt2.2').style.display = 'none' " >
+           [x]</a>
+        </div>
+        <pre>
+        
+pt2.2: 我是04
+
+
+        </pre>
+    </div>
+    <!--css div popup end-->
+
+    </td>
+    <td>无截图</td>
+</tr>
+
+<tr class='passClass'>
+    <td>blog.test_03.Test3</td>
+    <td>1</td>
+    <td>1</td>
+    <td>0</td>
+    <td>0</td>
+    <td><a href="javascript:showClassDetail('c3',1)">详情</a></td>
+    <td>&nbsp;</td>
+</tr>
+
+<tr id='pt3.1' class='hiddenRow'>
+    <td ><div class='testcase'>test_05: 测试用力05</div></td>
+    <td colspan='5' align='center'>
+
+    <!--css div popup start-->
+    <span class='status passCase'>
+    <a class="popup_link" onfocus='this.blur();' href="javascript:showTestDetail('div_pt3.1')" >
+        通过</a></span>
+
+    <div id='div_pt3.1' class="popup_window">
+        <div style='text-align: right; color:red;cursor:pointer'>
+        <a onfocus='this.blur();' onclick="document.getElementById('div_pt3.1').style.display = 'none' " >
+           [x]</a>
+        </div>
+        <pre>
+        
+pt3.1: 我是05
+
+
+        </pre>
+    </div>
+    <!--css div popup end-->
+
+    </td>
+    <td>无截图</td>
+</tr>
+
 <tr id='total_row'>
     <th>统计</th>
-    <th>%(count)s</th>
-    <th>%(Pass)s</th>
-    <th>%(fail)s</th>
-    <th>%(error)s</th>
+    <th>5</th>
+    <th>4</th>
+    <th>1</th>
+    <th>0</th>
     <th>&nbsp;</th>
     <th>&nbsp;</th>
 </tr>
 </table>
 <script>
     showCase(1);
-    drawCircle(%(Pass)s, %(fail)s, %(error)s);
+    drawCircle(4, 1, 0);
 </script>
-"""
-    # variables: (test_list, count, Pass, fail, error)
 
-    REPORT_CLASS_TMPL = r"""
-<tr class='%(style)s'>
-    <td>%(desc)s</td>
-    <td>%(count)s</td>
-    <td>%(Pass)s</td>
-    <td>%(fail)s</td>
-    <td>%(error)s</td>
-    <td><a href="javascript:showClassDetail('%(cid)s',%(count)s)">详情</a></td>
-    <td>&nbsp;</td>
-</tr>
-"""  # variables: (style, desc, count, Pass, fail, error, cid)
+<div id='ending'>&nbsp;</div>
 
-    REPORT_TEST_WITH_OUTPUT_TMPL = r"""
-<tr id='%(tid)s' class='%(Class)s'>
-    <td ><div class='testcase'>%(desc)s</div></td>
-    <td colspan='5' align='center'>
-
-    <!--css div popup start-->
-    <span class='status %(style)s'>
-    <a class="popup_link" onfocus='this.blur();' href="javascript:showTestDetail('div_%(tid)s')" >
-        %(status)s</a></span>
-
-    <div id='div_%(tid)s' class="popup_window">
-        <div style='text-align: right; color:red;cursor:pointer'>
-        <a onfocus='this.blur();' onclick="document.getElementById('div_%(tid)s').style.display = 'none' " >
-           [x]</a>
-        </div>
-        <pre>
-        %(script)s
-        </pre>
-    </div>
-    <!--css div popup end-->
-
-    </td>
-    <td>%(img)s</td>
-</tr>
-"""  # variables: (tid, Class, style, desc, status,img)
-
-    REPORT_TEST_NO_OUTPUT_TMPL = r"""
-<tr id='%(tid)s' class='%(Class)s'>
-    <td><div class='testcase'>%(desc)s</div></td>
-    <td colspan='5' align='center'><span class='status %(style)s'>%(status)s</span></td>
-    <td>%(img)s</td>
-</tr>
-"""  # variables: (tid, Class, style, desc, status,img)
-
-    REPORT_TEST_OUTPUT_TMPL = r"""
-%(id)s: %(output)s
-"""  # variables: (id, output)
-
-
-    IMG_TMPL = r"""
-        <a href="#"  onclick="show_img(this)">显示截图</a>
-    <div align="center" class="screenshots"  style="display:none">
-        <a class="close_shots"  href="#"   onclick="hide_img(this)"></a>
-        %(imgs)s
-        <div class="imgyuan"></div>
-    </div>
-    """
-    # ------------------------------------------------------------------------
-    # ENDING
-    #
-
-    ENDING_TMPL = """<div id='ending'>&nbsp;</div>"""
-
-    # -------------------- The end of the Template class -------------------
-
-    def __getattribute__(self, item):
-        value = object.__getattribute__(self, item)
-        if PY3K:
-            return value
-        else:
-            if isinstance(value, str):
-                return value.decode("utf-8")
-            else:
-                return value
-
-
-TestResult = unittest.TestResult
-
-
-class _TestResult(TestResult):
-    # note: _TestResult is a pure representation of results.
-    # It lacks the output and reporting ability compares to unittest._TextTestResult.
-
-    def __init__(self, verbosity=1, retry=0,save_last_try=True):
-        TestResult.__init__(self)
-        self.stdout0 = None
-        self.stderr0 = None
-        self.success_count = 0
-        self.failure_count = 0
-        self.error_count = 0
-        self.verbosity = verbosity
-
-        # result is a list of result in 4 tuple
-        # (
-        #   result code (0: success; 1: fail; 2: error),
-        #   TestCase object,
-        #   Test output (byte string),
-        #   stack trace,
-        # )
-        self.result = []
-        self.retry = retry
-        self.trys = 0
-        self.status = 0
-        self.save_last_try = save_last_try
-        self.outputBuffer = StringIO.StringIO()
-
-    def startTest(self, test):
-        test.imgs = []
-        # test.imgs = getattr(test, "imgs", [])
-        TestResult.startTest(self, test)
-        self.outputBuffer.seek(0)
-        self.outputBuffer.truncate()
-        stdout_redirector.fp = self.outputBuffer
-        stderr_redirector.fp = self.outputBuffer
-        self.stdout0 = sys.stdout
-        self.stderr0 = sys.stderr
-        sys.stdout = stdout_redirector
-        sys.stderr = stderr_redirector
-
-    def complete_output(self):
-        """
-        Disconnect output redirection and return buffer.
-        Safe to call multiple times.
-        """
-        if self.stdout0:
-            sys.stdout = self.stdout0
-            sys.stderr = self.stderr0
-            self.stdout0 = None
-            self.stderr0 = None
-        return self.outputBuffer.getvalue()
-
-    def stopTest(self, test):
-        # Usually one of addSuccess, addError or addFailure would have been called.
-        # But there are some path in unittest that would bypass this.
-        # We must disconnect stdout in stopTest(), which is guaranteed to be called.
-        if self.retry:
-            if self.status == 1:
-                self.trys += 1
-                if self.trys <= self.retry:
-                    if self.save_last_try:
-                        t = self.result.pop(-1)
-                        if t[0]==1:
-                            self.failure_count-=1
-                        else:
-                            self.error_count -= 1
-                    test=copy.copy(test)
-                    sys.stderr.write("Retesting... ")
-                    sys.stderr.write(str(test))
-                    sys.stderr.write('..%d \n' % self.trys)
-                    doc = test._testMethodDoc or ''
-                    if doc.find('_retry')!=-1:
-                        doc = doc[:doc.find('_retry')]
-                    desc ="%s_retry:%d" %(doc, self.trys)
-                    if not PY3K:
-                        if isinstance(desc, str):
-                            desc = desc.decode("utf-8")
-                    test._testMethodDoc = desc
-                    test(self)
-                else:
-                    self.status = 0
-                    self.trys = 0
-        self.complete_output()
-
-    def addSuccess(self, test):
-        self.success_count += 1
-        self.status = 0
-        TestResult.addSuccess(self, test)
-        output = self.complete_output()
-        self.result.append((0, test, output, ''))
-        if self.verbosity > 1:
-            sys.stderr.write('ok ')
-            sys.stderr.write(str(test))
-            sys.stderr.write('\n')
-        else:
-            sys.stderr.write('.')
-
-    def addError(self, test, err):
-        self.error_count += 1
-        self.status = 1
-        TestResult.addError(self, test, err)
-        _, _exc_str = self.errors[-1]
-        output = self.complete_output()
-        self.result.append((2, test, output, _exc_str))
-        if not getattr(test, "driver",""):
-            pass
-        else:
-            try:
-                driver = getattr(test, "driver")
-                test.imgs.append(driver.get_screenshot_as_base64())
-            except Exception:
-                pass
-        if self.verbosity > 1:
-            sys.stderr.write('E  ')
-            sys.stderr.write(str(test))
-            sys.stderr.write('\n')
-        else:
-            sys.stderr.write('E')
-
-    def addFailure(self, test, err):
-        self.failure_count += 1
-        self.status = 1
-        TestResult.addFailure(self, test, err)
-        _, _exc_str = self.failures[-1]
-        output = self.complete_output()
-        self.result.append((1, test, output, _exc_str))
-        if not getattr(test, "driver",""):
-            pass
-        else:
-            try:
-                driver = getattr(test, "driver")
-                test.imgs.append(driver.get_screenshot_as_base64())
-            except Exception as e:
-                pass
-        if self.verbosity > 1:
-            sys.stderr.write('F  ')
-            sys.stderr.write(str(test))
-            sys.stderr.write('\n')
-        else:
-            sys.stderr.write('F')
-
-
-class HTMLTestRunner(Template_mixin):
-    def __init__(self, stream=sys.stdout, verbosity=1, title=None, description=None, retry=0,save_last_try=False):
-        self.stream = stream
-        self.retry = retry
-        self.save_last_try=save_last_try
-        self.verbosity = verbosity
-        if title is None:
-            self.title = self.DEFAULT_TITLE
-        else:
-            self.title = title
-        if description is None:
-            self.description = self.DEFAULT_DESCRIPTION
-        else:
-            self.description = description
-
-        self.startTime = datetime.datetime.now()
-
-    def run(self, test):
-        "Run the given test case or test suite."
-        result = _TestResult(self.verbosity, self.retry, self.save_last_try)
-        test(result)
-        self.stopTime = datetime.datetime.now()
-        self.generateReport(test, result)
-        if PY3K:
-            # for python3
-            # print('\nTime Elapsed: %s' % (self.stopTime - self.startTime),file=sys.stderr)
-            output = '\nTime Elapsed: %s' % (self.stopTime - self.startTime)
-            sys.stderr.write(output)
-        else:
-            print >> sys.stderr, '\nTime Elapsed: %s' % (self.stopTime - self.startTime)
-        return result
-
-    def sortResult(self, result_list):
-        # unittest does not seems to run in any particular order.
-        # Here at least we want to group them together by class.
-        rmap = {}
-        classes = []
-        for n, t, o, e in result_list:
-            cls = t.__class__
-            if not cls in rmap:
-                rmap[cls] = []
-                classes.append(cls)
-            rmap[cls].append((n, t, o, e))
-        r = [(cls, rmap[cls]) for cls in classes]
-        return r
-
-    def getReportAttributes(self, result):
-        """
-        Return report attributes as a list of (name, value).
-        Override this to add custom attributes.
-        """
-        startTime = str(self.startTime)[:19]
-        duration = str(self.stopTime - self.startTime)
-        status = []
-        if result.success_count:
-            status.append(u'<span class="tj passCase">Pass</span>%s' % result.success_count)
-        if result.failure_count:
-            status.append(u'<span class="tj failCase">Failure</span>%s' % result.failure_count)
-        if result.error_count:
-            status.append(u'<span class="tj errorCase">Error</span>%s' % result.error_count)
-        if status:
-            status = ' '.join(status)
-        else:
-            status = 'none'
-        return [
-            (u'开始时间', startTime),
-            (u'耗时', duration),
-            (u'状态', status),
-        ]
-
-    def generateReport(self, test, result):
-        report_attrs = self.getReportAttributes(result)
-        generator = 'HTMLTestRunner %s' % __version__
-        stylesheet = self._generate_stylesheet()
-        heading = self._generate_heading(report_attrs)
-        report = self._generate_report(result)
-        ending = self._generate_ending()
-        output = self.HTML_TMPL % dict(
-            title=saxutils.escape(self.title),
-            generator=generator,
-            stylesheet=stylesheet,
-            heading=heading,
-            report=report,
-            ending=ending,
-        )
-        if PY3K:
-            self.stream.write(output.encode())
-        else:
-            self.stream.write(output.encode('utf8'))
-
-    def _generate_stylesheet(self):
-        return self.STYLESHEET_TMPL
-
-    def _generate_heading(self, report_attrs):
-        a_lines = []
-        for name, value in report_attrs:
-            line = self.HEADING_ATTRIBUTE_TMPL % dict(
-                name=name,
-                value=value,
-            )
-            a_lines.append(line)
-        heading = self.HEADING_TMPL % dict(
-            title=saxutils.escape(self.title),
-            parameters=''.join(a_lines),
-            description=saxutils.escape(self.description),
-        )
-        return heading
-
-    def _generate_report(self, result):
-        rows = []
-        sortedResult = self.sortResult(result.result)
-        for cid, (cls, cls_results) in enumerate(sortedResult):
-            # subtotal for a class
-            np = nf = ne = 0
-            for n, t, o, e in cls_results:
-                if n == 0:
-                    np += 1
-                elif n == 1:
-                    nf += 1
-                else:
-                    ne += 1
-
-            # format class description
-            if cls.__module__ == "__main__":
-                name = cls.__name__
-            else:
-                name = "%s.%s" % (cls.__module__, cls.__name__)
-            doc = cls.__doc__ and cls.__doc__.split("\n")[0] or ""
-            desc = doc and '%s: %s' % (name, doc) or name
-            if not PY3K:
-                if isinstance(desc, str):
-                    desc = desc.decode("utf-8")
-
-            row = self.REPORT_CLASS_TMPL % dict(
-                style=ne > 0 and 'errorClass' or nf > 0 and 'failClass' or 'passClass',
-                desc=desc,
-                count=np + nf + ne,
-                Pass=np,
-                fail=nf,
-                error=ne,
-                cid='c%s' % (cid + 1),
-            )
-            rows.append(row)
-
-            for tid, (n, t, o, e) in enumerate(cls_results):
-                self._generate_report_test(rows, cid, tid, n, t, o, e)
-
-        report = self.REPORT_TMPL % dict(
-            test_list=u''.join(rows),
-            count=str(result.success_count + result.failure_count + result.error_count),
-            Pass=str(result.success_count),
-            fail=str(result.failure_count),
-            error=str(result.error_count),
-        )
-        return report
-
-    def _generate_report_test(self, rows, cid, tid, n, t, o, e):
-        # e.g. 'pt1.1', 'ft1.1', etc
-        has_output = bool(o or e)
-        tid = (n == 0 and 'p' or 'f') + 't%s.%s' % (cid + 1, tid + 1)
-        name = t.id().split('.')[-1]
-        if self.verbosity > 1:
-            doc = t._testMethodDoc or ''
-        else:
-            doc = ""
-
-        desc = doc and ('%s: %s' % (name, doc)) or name
-        if not PY3K:
-            if isinstance(desc, str):
-                desc = desc.decode("utf-8")
-        tmpl = has_output and self.REPORT_TEST_WITH_OUTPUT_TMPL or self.REPORT_TEST_NO_OUTPUT_TMPL
-
-        # o and e should be byte string because they are collected from stdout and stderr?
-        if isinstance(o, str):
-            # uo = unicode(o.encode('string_escape'))
-            if PY3K:
-                uo = o
-            else:
-                uo = o.decode('utf-8', 'ignore')
-        else:
-            uo = o
-        if isinstance(e, str):
-            # ue = unicode(e.encode('string_escape'))
-            if PY3K:
-                ue = e
-            elif e.find("Error") != -1 or e.find("Exception") != -1:
-                es = e.decode('utf-8', 'ignore').split('\n')
-                es[-2] = es[-2].decode('unicode_escape')
-                ue = u"\n".join(es)
-            else:
-                ue = e.decode('utf-8', 'ignore')
-        else:
-            ue = e
-
-        script = self.REPORT_TEST_OUTPUT_TMPL % dict(
-            id=tid,
-            output=saxutils.escape(uo + ue),
-        )
-        if getattr(t,'imgs',[]):
-            # 判断截图列表，如果有则追加
-            tmp = u""
-            for i, img in enumerate(t.imgs):
-                if i==0:
-                    tmp+=""" <img src="data:image/jpg;base64,%s" style="display: block;" class="img"/>\n""" % img
-                else:
-                    tmp+=""" <img src="data:image/jpg;base64,%s" style="display: none;" class="img"/>\n""" % img
-            imgs = self.IMG_TMPL % dict(imgs=tmp)
-        else:
-            imgs = u"""无截图"""
-
-        row = tmpl % dict(
-            tid=tid,
-            Class=(n == 0 and 'hiddenRow' or 'none'),
-            style=n == 2 and 'errorCase' or (n == 1 and 'failCase' or 'passCase'),
-            desc=desc,
-            script=script,
-            status=self.STATUS[n],
-            img=imgs,
-        )
-        rows.append(row)
-        if not has_output:
-            return
-
-    def _generate_ending(self):
-        return self.ENDING_TMPL
-
-
-##############################################################################
-# Facilities for running tests from the command line
-##############################################################################
-
-# Note: Reuse unittest.TestProgram to launch test. In the future we may
-# build our own launcher to support more specific command line
-# parameters like test title, CSS, etc.
-class TestProgram(unittest.TestProgram):
-    """
-    A variation of the unittest.TestProgram. Please refer to the base
-    class for command line parameters.
-    """
-
-    def runTests(self):
-        # Pick HTMLTestRunner as the default test runner.
-        # base class's testRunner parameter is not useful because it means
-        # we have to instantiate HTMLTestRunner before we know self.verbosity.
-        if self.testRunner is None:
-            self.testRunner = HTMLTestRunner(verbosity=self.verbosity)
-        unittest.TestProgram.runTests(self)
-
-
-main = TestProgram
-
-##############################################################################
-# Executing this module from the command line
-##############################################################################
-
-if __name__ == "__main__":
-    main(module=None)
+</body>
+</html>
